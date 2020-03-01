@@ -1,0 +1,75 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <MQTT.h>
+
+//
+//    usage.h
+//    Purpose: Demonstration of how to use the HC-SR04 driver
+//
+//    Author: Richard Nash
+//    Version: 1.0.1
+
+#include "HC-SR04.h"
+#include "application.h"
+
+
+/*
+ The HC-SR04 device is a 5V device. So, VIN (which is 5V when connected to a USB power supply)
+ is used to power it. Also, the "Echo" pin will present a 5V pulse, which can be connected
+ to any of the D* GPIO pins, as they are 5V tolerant. However, they cannot be connected to
+ non-5V tolerant pins, like the A* pins, even if in digitial mode.
+
+ This example expects the wiring to be as follows:
+    Photon  HC-SR04
+    GND     GND
+    VIN     VCC
+    A0      Trig
+    D0      Echo
+*/
+
+void callback(char* topic, byte* payload, unsigned int length);
+MQTT client("MQTTSERVER", PORT, callback);
+
+// recieve message
+void callback(char* topic, byte* payload, unsigned int length) {
+    char p[length + 1];
+    memcpy(p, payload, length);
+    p[length] = NULL;
+    
+    delay(1000);
+}
+
+// trigger / echo pins
+const int triggerPin = A0;
+const int echoPin = D0;
+HC_SR04 rangefinder = HC_SR04(triggerPin, echoPin);
+
+void setup()
+{
+    rangefinder.init();
+    
+    // connect to the server(unique id by Time.now())
+    //client.connect("sparkclient_" + String(Time.now()));
+     client.connect("spark-client", "USERNAME", "PASSWORD");
+
+    // publish
+    if (client.isConnected()) {
+        client.publish("/andse/photon/message","Photon Online");
+        Particle.publish("MQTT", "System Connected");
+    }
+}
+
+void loop()
+{
+    unsigned long start = micros();
+    float inch = rangefinder.distInch();
+    unsigned long calcTime = micros() - start;
+
+    String strInch;
+    strInch = String(inch);
+    
+    
+    // publish to MQTT
+    client.publish("/andse/photon/message",strInch);
+    
+    delay(1000);
+}
